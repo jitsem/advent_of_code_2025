@@ -2,17 +2,18 @@ use clap::Parser;
 use clap::ValueEnum;
 use std::error::Error;
 use std::fs;
-use std::io;
-use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::thread;
-use std::thread::JoinHandle;
-use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
+
+use crate::common::day::*;
+use crate::days::day1::Day1;
+use crate::spinner::Spinner;
+
+mod common;
+mod days;
+mod spinner;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -43,39 +44,6 @@ enum DayArg {
     Day12 = 11,
 }
 
-trait Day {
-    fn get_name(&self) -> String;
-    fn get_input_name(&self) -> String;
-    fn get_description(&self) -> String;
-    fn solve_part1(&self, input: &str) -> Result<String, Box<dyn Error>>;
-    fn solve_part2(&self, input: &str) -> Result<String, Box<dyn Error>>;
-}
-
-struct Day1;
-impl Day for Day1 {
-    fn solve_part1(&self, _: &str) -> Result<String, Box<dyn Error>> {
-        sleep(Duration::from_secs(2));
-        Ok("placeholder".to_owned())
-    }
-
-    fn solve_part2(&self, _: &str) -> Result<String, Box<dyn Error>> {
-        sleep(Duration::from_secs(2));
-        Ok("placeholder".to_owned())
-    }
-
-    fn get_name(&self) -> String {
-        "Day 1".into()
-    }
-
-    fn get_input_name(&self) -> String {
-        "day1.txt".into()
-    }
-
-    fn get_description(&self) -> String {
-        "A testing day".into()
-    }
-}
-
 struct DayFactory {
     days: [Option<Box<dyn Day>>; 12],
 }
@@ -83,10 +51,6 @@ impl DayFactory {
     fn new() -> Self {
         let mut days: [Option<Box<dyn Day>>; 12] = [const { None }; 12];
         days[0] = Some(Box::new(Day1));
-        days[1] = Some(Box::new(Day1));
-        days[2] = Some(Box::new(Day1));
-        days[3] = Some(Box::new(Day1));
-        days[4] = Some(Box::new(Day1));
         DayFactory { days }
     }
     fn get_day_instance(&self, day_arg: DayArg) -> &Option<Box<dyn Day>> {
@@ -189,71 +153,6 @@ fn run_set(
         results.push(res);
     }
     Ok(())
-}
-
-#[derive(Clone, Copy)]
-struct SpinnerState {
-    should_show: bool,
-    should_stop: bool,
-}
-
-struct Spinner {
-    state: Arc<Mutex<SpinnerState>>,
-    handle: JoinHandle<()>,
-}
-
-impl Spinner {
-    fn new() -> Self {
-        let state = Arc::new(Mutex::new(SpinnerState {
-            should_show: false,
-            should_stop: false,
-        }));
-        let show_spin = state.clone();
-        let handle = thread::spawn(move || {
-            let spinner = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
-            let mut spinner_index = 0;
-            loop {
-                {
-                    let state = *show_spin.lock().expect("Failed to lock spinner mutex");
-                    if state.should_stop {
-                        print!("\r");
-                        io::stdout().flush().expect("Expected being able to flush");
-                        break;
-                    }
-                    if state.should_show {
-                        print!("{}", spinner[spinner_index]);
-                        spinner_index += 1;
-                        if spinner_index == spinner.len() {
-                            spinner_index = 0;
-                        }
-
-                        io::stdout().flush().expect("Expected being able to flush");
-                        print!("\r");
-                    }
-                }
-                sleep(Duration::from_millis(500));
-            }
-        });
-        Self { state, handle }
-    }
-
-    fn resume_spining(&self) {
-        let mut lock = self.state.lock().expect("Failed to lock spinner mutex");
-        lock.should_show = true;
-    }
-
-    fn pause_spining(&self) {
-        let mut lock = self.state.lock().expect("Failed to lock spinner mutex");
-        lock.should_show = false;
-    }
-
-    fn stop_spinner(self) {
-        {
-            let mut lock = self.state.lock().expect("Failed to lock spinner mutex");
-            lock.should_stop = true;
-        }
-        self.handle.join().expect("Failed to join spinner");
-    }
 }
 
 fn pretty_print_slice_of_day_result(results: &[DayResult]) {
