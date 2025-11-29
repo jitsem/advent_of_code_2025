@@ -1,12 +1,18 @@
+use clap::Parser;
+use clap::ValueEnum;
+use std::error::Error;
 use std::fs;
+use std::io;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::thread;
+use std::thread::JoinHandle;
 use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
-
-use clap::Parser;
-use clap::ValueEnum;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -41,20 +47,20 @@ trait Day {
     fn get_name(&self) -> String;
     fn get_input_name(&self) -> String;
     fn get_description(&self) -> String;
-    fn solve_part1(&self, input: &str) -> String;
-    fn solve_part2(&self, input: &str) -> String;
+    fn solve_part1(&self, input: &str) -> Result<String, Box<dyn Error>>;
+    fn solve_part2(&self, input: &str) -> Result<String, Box<dyn Error>>;
 }
 
 struct Day1;
 impl Day for Day1 {
-    fn solve_part1(&self, _: &str) -> String {
+    fn solve_part1(&self, _: &str) -> Result<String, Box<dyn Error>> {
         sleep(Duration::from_secs(2));
-        "placeholder".to_owned()
+        Ok("placeholder".to_owned())
     }
 
-    fn solve_part2(&self, _: &str) -> String {
-        sleep(Duration::from_secs(3));
-        "placeholder".to_owned()
+    fn solve_part2(&self, _: &str) -> Result<String, Box<dyn Error>> {
+        sleep(Duration::from_secs(2));
+        Ok("placeholder".to_owned())
     }
 
     fn get_name(&self) -> String {
@@ -104,14 +110,14 @@ struct DayResult {
     duration: Duration,
 }
 
-fn load_input(path: &Path, file_name: &str) -> String {
+fn load_input(path: &Path, file_name: &str) -> Result<String, Box<dyn Error>> {
     let mut buff = path.to_path_buf();
     buff.push(file_name);
-    let content = fs::read_to_string(path);
-    content.expect("Not a valid input path")
+    let content = fs::read_to_string(buff)?;
+    Ok(content)
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     let root_input_path = args.input_folder.unwrap_or(PathBuf::from("input"));
     let instance_fac = DayFactory::new();
@@ -127,21 +133,49 @@ fn main() {
             .map(|b| &**b)
             .collect::<Vec<&dyn Day>>(),
     };
-    let mut days_to_run = days_instances
+    let days_to_run = days_instances
         .iter()
-        .map(|di| DayRun {
-            input: load_input(&root_input_path, &di.get_input_name()),
-            instance: *di,
+        .map(|di| {
+            let input = load_input(&root_input_path, &di.get_input_name());
+            match input {
+                Ok(input) => Ok(DayRun {
+                    input,
+                    instance: *di,
+                }),
+                Err(e) => Err(e),
+            }
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()?;
     let mut results: Vec<DayResult> = Vec::with_capacity(days_to_run.len());
-    for day_to_run in days_to_run.iter_mut() {
+    let spinner = Spinner::new();
+    let run_result = run_set(&days_to_run, &mut results, &spinner);
+    spinner.stop_spinner();
+    match run_result {
+        Ok(_) => {
+            println!("Advented succesfully!");
+            pretty_print_slice_of_day_result(&results);
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Failed during advent!");
+            Err(e)
+        }
+    }
+}
+
+fn run_set(
+    days_to_run: &[DayRun],
+    results: &mut Vec<DayResult>,
+    spinner: &Spinner,
+) -> Result<(), Box<dyn Error>> {
+    for day_to_run in days_to_run.iter() {
         let name = day_to_run.instance.get_name();
         let description = day_to_run.instance.get_description();
         pretty_print_name_description(&name, &description);
+        spinner.resume_spining();
         let now = Instant::now();
-        let part_1 = day_to_run.instance.solve_part1(&day_to_run.input);
-        let part_2 = day_to_run.instance.solve_part2(&day_to_run.input);
+        let part_1 = day_to_run.instance.solve_part1(&day_to_run.input)?;
+        let part_2 = day_to_run.instance.solve_part2(&day_to_run.input)?;
         let duration = now.elapsed();
         let res = DayResult {
             name,
@@ -150,11 +184,76 @@ fn main() {
             part_2,
             duration,
         };
+        spinner.pause_spining();
         pretty_print_day_result(&res);
         results.push(res);
     }
-    println!("Done processing!");
-    pretty_print_slice_of_day_result(&results);
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+struct SpinnerState {
+    should_show: bool,
+    should_stop: bool,
+}
+
+struct Spinner {
+    state: Arc<Mutex<SpinnerState>>,
+    handle: JoinHandle<()>,
+}
+
+impl Spinner {
+    fn new() -> Self {
+        let state = Arc::new(Mutex::new(SpinnerState {
+            should_show: false,
+            should_stop: false,
+        }));
+        let show_spin = state.clone();
+        let handle = thread::spawn(move || {
+            let spinner = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+            let mut spinner_index = 0;
+            loop {
+                {
+                    let state = *show_spin.lock().expect("Failed to lock spinner mutex");
+                    if state.should_stop {
+                        print!("\r");
+                        io::stdout().flush().expect("Expected being able to flush");
+                        break;
+                    }
+                    if state.should_show {
+                        print!("{}", spinner[spinner_index]);
+                        spinner_index += 1;
+                        if spinner_index == spinner.len() {
+                            spinner_index = 0;
+                        }
+
+                        io::stdout().flush().expect("Expected being able to flush");
+                        print!("\r");
+                    }
+                }
+                sleep(Duration::from_millis(500));
+            }
+        });
+        Self { state, handle }
+    }
+
+    fn resume_spining(&self) {
+        let mut lock = self.state.lock().expect("Failed to lock spinner mutex");
+        lock.should_show = true;
+    }
+
+    fn pause_spining(&self) {
+        let mut lock = self.state.lock().expect("Failed to lock spinner mutex");
+        lock.should_show = false;
+    }
+
+    fn stop_spinner(self) {
+        {
+            let mut lock = self.state.lock().expect("Failed to lock spinner mutex");
+            lock.should_stop = true;
+        }
+        self.handle.join().expect("Failed to join spinner");
+    }
 }
 
 fn pretty_print_slice_of_day_result(results: &[DayResult]) {
