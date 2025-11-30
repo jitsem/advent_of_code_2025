@@ -100,7 +100,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let days_to_run = days_instances
         .iter()
         .map(|di| {
-            let input = load_input(&root_input_path, &di.get_input_name());
+            let input = load_input(&root_input_path, di.get_input_name());
             match input {
                 Ok(input) => Ok(DayRun {
                     input,
@@ -135,15 +135,15 @@ fn run_set(
     for day_to_run in days_to_run.iter() {
         let name = day_to_run.instance.get_name();
         let description = day_to_run.instance.get_description();
-        pretty_print_name_description(&name, &description);
+        pretty_print_name_description(name, description);
         spinner.resume_spining();
         let now = Instant::now();
         let part_1 = day_to_run.instance.solve_part1(&day_to_run.input)?;
         let part_2 = day_to_run.instance.solve_part2(&day_to_run.input)?;
         let duration = now.elapsed();
         let res = DayResult {
-            name,
-            description,
+            name: name.into(),
+            description: description.into(),
             part_1,
             part_2,
             duration,
