@@ -18,7 +18,8 @@ impl Day for Day1 {
     }
 
     fn get_input_name(&self) -> &str {
-        "day1.txt"    }
+        "day1.txt"
+    }
 
     fn get_description(&self) -> &str {
         "A testing day"

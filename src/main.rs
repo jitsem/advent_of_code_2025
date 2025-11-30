@@ -1,17 +1,16 @@
+use crate::common::day::*;
+use crate::days::day1::Day1;
+use crate::spinner::Spinner;
 use clap::Parser;
 use clap::ValueEnum;
+use day_runner::{DayRun, DayRunner};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
-use std::time::Duration;
-use std::time::Instant;
-
-use crate::common::day::*;
-use crate::days::day1::Day1;
-use crate::spinner::Spinner;
 
 mod common;
+mod day_runner;
 mod days;
 mod spinner;
 
@@ -61,19 +60,6 @@ impl DayFactory {
     }
 }
 
-struct DayRun<'a> {
-    instance: &'a dyn Day,
-    input: String,
-}
-
-struct DayResult {
-    name: String,
-    description: String,
-    part_1: String,
-    part_2: String,
-    duration: Duration,
-}
-
 fn load_input(path: &Path, file_name: &str) -> Result<String, Box<dyn Error>> {
     let mut buff = path.to_path_buf();
     buff.push(file_name);
@@ -102,22 +88,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         .map(|di| {
             let input = load_input(&root_input_path, di.get_input_name());
             match input {
-                Ok(input) => Ok(DayRun {
-                    input,
-                    instance: *di,
-                }),
+                Ok(input) => Ok(DayRun::new(*di, input)),
                 Err(e) => Err(e),
             }
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let mut results: Vec<DayResult> = Vec::with_capacity(days_to_run.len());
+    let DayRunner = DayRunner;
     let spinner = Spinner::new();
-    let run_result = run_set(&days_to_run, &mut results, &spinner);
+    let run_result = DayRunner::run_set(&days_to_run, &spinner);
     spinner.stop_spinner();
     match run_result {
         Ok(_) => {
             println!("Advented succesfully!");
-            pretty_print_slice_of_day_result(&results);
             Ok(())
         }
         Err(e) => {
@@ -125,54 +107,4 @@ fn main() -> Result<(), Box<dyn Error>> {
             Err(e)
         }
     }
-}
-
-fn run_set(
-    days_to_run: &[DayRun],
-    results: &mut Vec<DayResult>,
-    spinner: &Spinner,
-) -> Result<(), Box<dyn Error>> {
-    for day_to_run in days_to_run.iter() {
-        let name = day_to_run.instance.get_name();
-        let description = day_to_run.instance.get_description();
-        pretty_print_name_description(name, description);
-        spinner.resume_spining();
-        let now = Instant::now();
-        let part_1 = day_to_run.instance.solve_part1(&day_to_run.input)?;
-        let part_2 = day_to_run.instance.solve_part2(&day_to_run.input)?;
-        let duration = now.elapsed();
-        let res = DayResult {
-            name: name.into(),
-            description: description.into(),
-            part_1,
-            part_2,
-            duration,
-        };
-        spinner.pause_spining();
-        pretty_print_day_result(&res);
-        results.push(res);
-    }
-    Ok(())
-}
-
-fn pretty_print_slice_of_day_result(results: &[DayResult]) {
-    println!("Executed following days:");
-    for result in results {
-        println!("\t{} - {}", result.name, result.description)
-    }
-    let total_time: u128 = results.iter().map(|r| r.duration.as_millis()).sum();
-    println!("Total took {total_time}ms!")
-}
-
-fn pretty_print_name_description(name: &str, description: &str) {
-    println!("-----------------------------------------");
-    println!("{} - {}", name, description);
-    println!("-----------------------------------------");
-}
-
-fn pretty_print_day_result(result: &DayResult) {
-    println!("Part 1: {}", result.part_1);
-    println!("Part 2: {}", result.part_2);
-    println!("Took: {}ms", result.duration.as_millis());
-    println!("=========================================");
 }
