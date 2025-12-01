@@ -88,16 +88,16 @@ impl Day for Day1 {
         Ok(times_past_zero.to_string())
     }
 
-    fn get_name(&self) -> String {
-        "Day 1".into()
+    fn get_name(&self) -> &str {
+        "Day 1"
     }
 
-    fn get_input_name(&self) -> String {
-        "day1.txt".into()
+    fn get_input_name(&self) -> &str {
+        "day1.txt"
     }
 
-    fn get_description(&self) -> String {
-        "Password troubles".into()
+    fn get_description(&self) -> &str {
+        "Password troubles"
     }
 }
 
