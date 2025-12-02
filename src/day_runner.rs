@@ -56,8 +56,8 @@ impl DayRunner {
         for result in results {
             println!("\t{} - {}", result.name, result.description)
         }
-        let total_time: u128 = results.iter().map(|r| r.duration.as_millis()).sum();
-        println!("Total took {total_time}ms!")
+        let total_time: u128 = results.iter().map(|r| r.duration.as_micros()).sum();
+        println!("Total took {:.3}ms!", total_time as f64 / 1000f64)
     }
 
     fn pretty_print_name_description(name: &str, description: &str) {
@@ -69,7 +69,7 @@ impl DayRunner {
     fn pretty_print_day_result(result: &DayResult) {
         println!("Part 1: {}", result.part_1);
         println!("Part 2: {}", result.part_2);
-        println!("Took: {}ms", result.duration.as_millis());
+        println!("Took: {:.3}ms", result.duration.as_micros() as f64/ 1000f64);
         println!("=========================================");
     }
 }
