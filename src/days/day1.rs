@@ -16,6 +16,7 @@ struct SafeDialResult {
 }
 
 impl SafeDial {
+    const DIAL_LOCK_SIZE: isize = 100;
     fn new() -> Self {
         SafeDial { current_pos: 50 }
     }
@@ -25,20 +26,21 @@ impl SafeDial {
             SafeDialAction::Rigth(ticks) => *ticks,
         };
 
-        if self.current_pos == 0 && offset < 0 {
-            self.current_pos = 100;
-        }
+        let initial = self.current_pos;
+        let new = self.current_pos + offset;
 
-        self.current_pos += offset;
-        let mut times_passed_zero = (self.current_pos / 100).abs();
+        let times_passed_zero = match action {
+            SafeDialAction::Left(_) => {
+                (initial - 1).div_euclid(Self::DIAL_LOCK_SIZE)
+                    - (new - 1).div_euclid(Self::DIAL_LOCK_SIZE)
+            }
+            SafeDialAction::Rigth(_) => new.div_euclid(Self::DIAL_LOCK_SIZE),
+        };
 
-        if self.current_pos < 1 {
-            times_passed_zero += 1;
-        }
-
-        self.current_pos %= 100;
+        self.current_pos = new;
+        self.current_pos %= Self::DIAL_LOCK_SIZE;
         if self.current_pos < 0 {
-            self.current_pos += 100;
+            self.current_pos += Self::DIAL_LOCK_SIZE;
         }
 
         SafeDialResult {
@@ -70,6 +72,7 @@ impl Day for Day1 {
         Ok(zero_count.to_string())
     }
 
+    //6166
     fn solve_part2(&self, input: &str) -> Result<String, Box<dyn Error>> {
         let mut times_past_zero = 0;
         let mut dial = SafeDial::new();
