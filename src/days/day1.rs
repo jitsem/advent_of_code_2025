@@ -3,7 +3,7 @@ use std::error::Error;
 
 enum SafeDialAction {
     Left(isize),
-    Rigth(isize),
+    Right(isize),
 }
 
 struct SafeDial {
@@ -23,18 +23,23 @@ impl SafeDial {
     fn turn(&mut self, action: &SafeDialAction) -> SafeDialResult {
         let offset = match action {
             SafeDialAction::Left(ticks) => -*ticks,
-            SafeDialAction::Rigth(ticks) => *ticks,
+            SafeDialAction::Right(ticks) => *ticks,
         };
 
         let initial = self.current_pos;
         let new = self.current_pos + offset;
 
+        // For the right case: just look at the new position to determine the 'wrap arounds'
+        // For left, we do the -1 to ensure the 0 and 1 are not within the same "bucket" of the div,
+        // so a change from 1 to 0 will count as 1 pas.
+        // The first part of that left case will be -1 in case of zero or zero in all other cases.
+        // Basically accounting for the fact that we can start at zero.
         let times_passed_zero = match action {
             SafeDialAction::Left(_) => {
                 (initial - 1).div_euclid(Self::DIAL_LOCK_SIZE)
                     - (new - 1).div_euclid(Self::DIAL_LOCK_SIZE)
             }
-            SafeDialAction::Rigth(_) => new.div_euclid(Self::DIAL_LOCK_SIZE),
+            SafeDialAction::Right(_) => new.div_euclid(Self::DIAL_LOCK_SIZE),
         };
 
         self.current_pos = new;
@@ -60,7 +65,7 @@ impl Day for Day1 {
             let mut chars = line.chars();
             let action: Result<SafeDialAction, Box<dyn Error>> = match chars.next() {
                 Some('L') => Ok(SafeDialAction::Left(chars.as_str().parse::<isize>()?)),
-                Some('R') => Ok(SafeDialAction::Rigth(chars.as_str().parse::<isize>()?)),
+                Some('R') => Ok(SafeDialAction::Right(chars.as_str().parse::<isize>()?)),
                 Some(_) => Err(("Encountered unknown letter").into()),
                 None => Err("Encountered empty line".into()),
             };
@@ -80,7 +85,7 @@ impl Day for Day1 {
             let mut chars = line.chars();
             let action: Result<SafeDialAction, Box<dyn Error>> = match chars.next() {
                 Some('L') => Ok(SafeDialAction::Left(chars.as_str().parse::<isize>()?)),
-                Some('R') => Ok(SafeDialAction::Rigth(chars.as_str().parse::<isize>()?)),
+                Some('R') => Ok(SafeDialAction::Right(chars.as_str().parse::<isize>()?)),
                 Some(_) => Err(("Encountered unknown letter").into()),
                 None => Err("Encountered empty line".into()),
             };
