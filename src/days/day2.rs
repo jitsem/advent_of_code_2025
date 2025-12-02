@@ -21,7 +21,7 @@ impl Day for Day2 {
     //13108371860
     fn solve_part1(&self, input: &str) -> Result<String, Box<dyn Error>> {
         let numbers = Self::extract_all_numbers(input)?;
-        let re = Regex::new(r"^(\d.*)\1$").unwrap();
+        let re = Regex::new(r"^(.+)\1$").unwrap();
         let res = Self::count_matches(numbers, re)?;
         Ok(res.to_string())
     }
@@ -29,7 +29,7 @@ impl Day for Day2 {
     //22471660255
     fn solve_part2(&self, input: &str) -> Result<String, Box<dyn Error>> {
         let numbers = Self::extract_all_numbers(input)?;
-        let re = Regex::new(r"^(\d.*)\1+$").unwrap();
+        let re = Regex::new(r"^(.+)\1+$").unwrap();
         let res = Self::count_matches(numbers, re)?;
         Ok(res.to_string())
     }
