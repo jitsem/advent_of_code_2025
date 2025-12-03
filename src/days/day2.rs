@@ -1,7 +1,5 @@
-use std::error::Error;
-use clap::builder::TypedValueParser;
-use fancy_regex::Regex;
 use crate::common::day::Day;
+use std::error::Error;
 
 pub struct Day2;
 
@@ -20,46 +18,48 @@ impl Day for Day2 {
 
     //13108371860
     fn solve_part1(&self, input: &str) -> Result<String, Box<dyn Error>> {
-        let numbers = Self::extract_all_numbers(input)?;
-        let re = Regex::new(r"^(.+)\1$").unwrap();
-        let res = Self::count_matches(numbers, re)?;
-        Ok(res.to_string())
+        let doubles: u64 = Self::extract_all_numbers(input)
+            .filter_map(|n| {
+                if n.len() % 2 == 0 {
+                    let div = n.len() / 2;
+                    let (one, two) = n.split_at(div);
+                    if one == two {
+                        return n.parse::<u64>().ok();
+                    }
+                }
+                None
+            })
+            .sum();
+        Ok(doubles.to_string())
     }
 
     //22471660255
     fn solve_part2(&self, input: &str) -> Result<String, Box<dyn Error>> {
-        let numbers = Self::extract_all_numbers(input)?;
-        let re = Regex::new(r"^(.+)\1+$").unwrap();
-        let res = Self::count_matches(numbers, re)?;
-        Ok(res.to_string())
+        let doubles: u64 = Self::extract_all_numbers(input)
+            .filter_map(|n| {
+                let same = (1..=n.len() / 2).any(|r| {
+                    let (left, right) = n.split_at(r);
+                    right
+                        .as_bytes()
+                        .chunks(left.len())
+                        .all(|chunk| chunk == left.as_bytes())
+                });
+
+                if same { n.parse::<u64>().ok() } else { None }
+            })
+            .sum();
+        Ok(doubles.to_string())
     }
 }
 
 impl Day2 {
-    fn extract_all_numbers(input: &str) -> Result<Vec<String>, Box<dyn Error>> {
-        let ranges = input.split(",").into_iter().collect::<Vec<_>>();
-        let mut numbers: Vec<String> = Vec::new();
-        for range in ranges {
-            let range = range.split_once("-").expect("Expected x - y");
-            let lower = range.0.parse::<usize>()?;
-            let upper = range.1.parse::<usize>()?;
-            for i in lower..upper + 1 {
-                numbers.push(i.to_string())
-            }
-        }
-        Ok(numbers)
-    }
-
-    fn count_matches(numbers: Vec<String>, re: Regex) -> Result<u64, Box<dyn Error>> {
-        let mut res = 0;
-        for n in numbers {
-            let result = re.is_match(n.as_str())?;
-            if result {
-                let number: u64 = n.parse()?;
-                res += number
-            }
-        }
-        Ok(res)
+    fn extract_all_numbers(input: &str) -> impl Iterator<Item = String> {
+        input.split(",").flat_map(|range| {
+            let (lower, upper) = range.split_once('-').expect("Expected x-y");
+            let lower = lower.parse::<usize>().expect("Expected x");
+            let upper = upper.parse::<usize>().expect("Expected y");
+            (lower..=upper).map(|i| i.to_string())
+        })
     }
 }
 
