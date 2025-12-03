@@ -1,6 +1,7 @@
 use crate::common::day::*;
 use crate::days::day1::Day1;
 use crate::days::day2::Day2;
+use crate::days::day3::Day3;
 use crate::spinner::Spinner;
 use clap::Parser;
 use clap::ValueEnum;
@@ -52,6 +53,7 @@ impl DayFactory {
         let mut days: [Option<Box<dyn Day>>; 12] = [const { None }; 12];
         days[0] = Some(Box::new(Day1));
         days[1] = Some(Box::new(Day2));
+        days[2] = Some(Box::new(Day3));
         DayFactory { days }
     }
     fn get_day_instance(&self, day_arg: DayArg) -> &Option<Box<dyn Day>> {
