@@ -1,4 +1,5 @@
 use crate::common::day::Day;
+use crate::common::util;
 use std::error::Error;
 
 pub struct Day2;
@@ -18,7 +19,8 @@ impl Day for Day2 {
 
     //13108371860
     fn solve_part1(&self, input: &str) -> Result<String, Box<dyn Error>> {
-        let doubles: u64 = Self::extract_all_numbers(input)
+        let doubles: u64 = util::Util::extract_all_numbers_from_str_range(input, ",")
+            .map(|i| i.to_string())
             .filter_map(|n| {
                 if n.len() % 2 == 0 {
                     let div = n.len() / 2;
@@ -35,7 +37,8 @@ impl Day for Day2 {
 
     //22471660255
     fn solve_part2(&self, input: &str) -> Result<String, Box<dyn Error>> {
-        let doubles: u64 = Self::extract_all_numbers(input)
+        let doubles: u64 = util::Util::extract_all_numbers_from_str_range(input, ",")
+            .map(|i| i.to_string())
             .filter_map(|n| {
                 let same = (1..=n.len() / 2).any(|r| {
                     let (left, right) = n.split_at(r);
@@ -52,16 +55,7 @@ impl Day for Day2 {
     }
 }
 
-impl Day2 {
-    fn extract_all_numbers(input: &str) -> impl Iterator<Item = String> {
-        input.split(",").flat_map(|range| {
-            let (lower, upper) = range.split_once('-').expect("Expected x-y");
-            let lower = lower.parse::<usize>().expect("Expected x");
-            let upper = upper.parse::<usize>().expect("Expected y");
-            (lower..=upper).map(|i| i.to_string())
-        })
-    }
-}
+impl Day2 {}
 
 #[cfg(test)]
 mod tests {
