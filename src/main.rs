@@ -70,7 +70,7 @@ fn load_input(path: &Path, file_name: &str) -> Result<String, Box<dyn Error>> {
     let mut buff = path.to_path_buf();
     buff.push(file_name);
     let content = fs::read_to_string(buff)?;
-    Ok(content)
+    Ok(content.replace("\r\n", "\n")) //Assume linux
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
