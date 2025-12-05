@@ -28,8 +28,23 @@ impl Day for Day4 {
         Ok(movable.to_string())
     }
 
+    //7922
     fn solve_part2(&self, input: &str) -> Result<String, Box<dyn Error>> {
-        Ok("TODO".to_string())
+        let mut floor = FloorPlan::new(input);
+        let mut movable = 0;
+        loop {
+            let prev_movable = movable;
+            for i in 0..floor.len() {
+                if floor.has_paper_at_index(i) && floor.count_surrounding(i) < 4 {
+                    movable += 1;
+                    floor.remove_paper(i);
+                }
+            }
+            if prev_movable == movable {
+                break;
+            }
+        }
+        Ok(movable.to_string())
     }
 }
 enum FloorItem {
@@ -65,10 +80,28 @@ impl FloorPlan {
         self.floor.len()
     }
 
+    fn remove_paper(&mut self, idx: usize) {
+        if idx >= self.len() {
+            panic!("Provided index is bigger than the floorplan")
+        }
+        self.floor[idx] = FloorItem::Nothing;
+    }
+
     fn count_surrounding(&self, idx: usize) -> usize {
         if idx >= self.len() {
             panic!("Provided index is bigger than the floorplan")
         }
+
+        self.get_valid_neighbours(idx)
+            .iter()
+            .filter_map(|n| match n {
+                Some(FloorItem::Paper) => Some(FloorItem::Paper),
+                _ => None,
+            })
+            .count()
+    }
+
+    fn get_valid_neighbours(&self, idx: usize) -> [Option<&FloorItem>; 8] {
         let idx = idx as i64;
         let indexes = [
             idx - self.width as i64,
@@ -104,15 +137,16 @@ impl FloorPlan {
                 idx - self.width as i64 + 1
             },
         ];
-        indexes
-            .iter()
-            .filter(|i| **i > 0)
-            .map(|i| self.get_at_index(usize::try_from(*i).expect("expected valid usize")))
-            .filter_map(|n| match n {
-                Some(FloorItem::Paper) => Some(FloorItem::Paper),
-                _ => None,
-            })
-            .count()
+
+        let neighbours: [Option<&FloorItem>; 8] = core::array::from_fn(|i| {
+            let index = indexes[i];
+            if index < 0 {
+                return None;
+            }
+            self.get_at_index(usize::try_from(index).expect("Expected a valid usize"))
+        });
+
+        neighbours
     }
 
     fn has_paper_at_index(&self, idx: usize) -> bool {
@@ -149,6 +183,6 @@ mod tests {
     #[test]
     fn part2_example() {
         let day = Day4;
-        assert_eq!(day.solve_part2(EXAMPLE).unwrap(), "3121910778619")
+        assert_eq!(day.solve_part2(EXAMPLE).unwrap(), "43")
     }
 }
